@@ -1,0 +1,101 @@
+# =========================
+# Build artifacts (C/C++)
+# =========================
+
+*.o
+*.obj
+*.out
+*.exe
+*.a
+*.so
+*.dll
+*.dylib
+
+# =========================
+# CMake / CLion
+# =========================
+
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+cmake_install.cmake
+
+# CLion IDE files
+.idea/
+
+# =========================
+# Visual Studio
+# =========================
+
+.vs/
+*.vcxproj.user
+*.vcxproj.filters
+*.vcxproj
+*.sln
+
+# Build folders
+Debug/
+Release/
+x64/
+x86/
+
+# =========================
+# Logs / temp
+# =========================
+
+*.log
+*.tmp
+*.tlog
+*.lastbuildstate
+*.cache
+*.pdb
+*.ilk
+
+# =========================
+# OS-specific
+# =========================
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# =========================
+# Debug / profiling
+# =========================
+
+*.dSYM/
+*.stackdump
+gmon.out
+
+# =========================
+# Coverage
+# =========================
+
+*.gcda
+*.gcno
+*.gcov
+
+# =========================
+# Project-specific (IMPORTANT)
+# =========================
+
+*.img
+*.disk
+
+# =========================
+# Editors
+# =========================
+
+.vscode/
+
+# =========================
+# Archives
+# =========================
+
+*.zip
+*.tar
+*.gz
