@@ -1,5 +1,6 @@
-#include "block_operation.h"
-#include "constants.h"
+#include "block_operations.h"
+#include "shared_values.h"
+#include "bitmap.h"
 
 // reads one full block from the disk image into the buffer.
 int read_block(FILE *disk, int block_num, uint8_t *buffer)
@@ -16,8 +17,8 @@ int read_block(FILE *disk, int block_num, uint8_t *buffer)
         return -1;
     }
     // read exactly one block into the buffer.
-     * Since each item is 1 byte, we expect BLOCK_SIZE items.
-     */
+    // since each item is 1 byte
+    // we expect BLOCK_SIZE items.
 
     //returns how many items were successfully read.
     size_t bytes_read = fread(buffer, 1, BLOCK_SIZE, disk);
@@ -50,6 +51,55 @@ int write_block(FILE *disk, int block_num, const uint8_t *buffer)
 
      // flush buffered output so the data is actually pushed to the file.
     if (fflush(disk) != 0) {
+        return -1;
+    }
+}
+
+// Allocates the first free block recorded in the data bitmap.
+int alloc_block(FILE *disk)
+{
+    uint8_t bitmap_buffer[BLOCK_SIZE];
+
+    // load the data block bitmap from its block in the disk image.
+    if (read_block(disk, DATA_BITMAP_BLOCK, bitmap_buffer) != 0) {
+        return -1;
+    }
+
+    // ask the bitmap module to find and reserve the first free block bit.
+    int allocated_index = bitmap_allocate(bitmap_buffer, TOTAL_BLOCKS);
+    if (allocated_index == -1) {
+        return -1;
+    }
+
+    // save the updated bitmap back to disk. 
+    if (write_block(disk, DATA_BITMAP_BLOCK, bitmap_buffer) != 0) {
+        return -1;
+    }
+    return allocated_index;
+}
+  
+
+// frees the given block number in the data block bitmap
+int free_block(FILE *disk, int block_num)
+{
+    uint8_t bitmap_buffer[BLOCK_SIZE];
+
+    if (block_num < 0 || block_num >= TOTAL_BLOCKS) {
+        return -1;
+    }
+
+    // load the current bitmap block from disk.
+    if (read_block(disk, DATA_BITMAP_BLOCK, bitmap_buffer) != 0) {
+        return -1;
+    }
+
+    // mark the requested block as free. 
+    if (bitmap_free(bitmap_buffer, TOTAL_BLOCKS, block_num) != 0) {
+        return -1;
+    }
+
+    //Save the updated bitmap back to disk. 
+    if (write_block(disk, DATA_BITMAP_BLOCK, bitmap_buffer) != 0) {
         return -1;
     }
 
