@@ -17,6 +17,7 @@ typedef struct {
     uint32_t file_size; // Actual size of file in bytes or (# entries * bytes)
     uint8_t block_count; // Max 16
     uint16_t blocks[MAX_BLOCKS_PER_INODE]; // Block indexes (0-1023)
+    int parent_inode;
 }Inode;
 
 

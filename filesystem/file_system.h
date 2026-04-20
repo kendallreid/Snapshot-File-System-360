@@ -5,48 +5,58 @@
 #include "directory.h"
 #include "inode.h"
 
-// Holds all filesystem state
+// =============================
+// FILE SYSTEM STATE
+// =============================
 typedef struct
 {
     // Disk file
     FILE *disk;
 
-    // Inode table
+    // Inode table (ALL files + directories)
     Inode inode_table[MAX_INODES];
 
-    // Root directory
-    DirEntry root_dir[MAX_DIR_ENTRIES];
-    int root_dir_count;
+    // =============================
+    // CURRENT WORKING DIRECTORY
+    // =============================
+    int cwd_inode;
+
 } FileSystem;
 
-// Formats disk
+// Format disk (initialize empty filesystem)
 int mkfs(FileSystem *fs, const char *disk_name);
 
-// Initialize the file structure
+// Initialize filesystem (load or create)
 int fs_init(FileSystem *fs);
 
-// Create a new file or directory
-int fs_create(FileSystem *fs, const char *name, inode_type type);
+// Create file or directory using full or relative path
+// Example: "/a/b/c.txt" OR "file.txt"
+int fs_create(FileSystem *fs, const char *path, inode_type type);
 
-// Converts filename into inode index
-int fs_lookup(FileSystem *fs, const char *name);
+// Resolve full or relative path to inode index
+// Supports: "/", "/a/b", "a/b", ".", ".."
+int fs_lookup_path(FileSystem *fs, const char *path);
 
-// List all files/directories
-int fs_ls(FileSystem *fs);
+// List directory contents at a given path or cwd if NULL
+int fs_ls(FileSystem *fs, const char *path);
 
-// Helper to free inode blocks
-void free_inode_blocks(FileSystem *fs, int inode_index);
+// Delete file or directory by path (absolute or relative)
+int fs_delete(FileSystem *fs, const char *path);
 
-// Store data from user
+// Change current working directory
+// Supports: cd /a/b, cd .., cd ., cd a/b
+int fs_cd(FileSystem *fs, const char *path);
+
+// Write data to file inode
 int fs_write(FileSystem *fs, int inode_index, const void *data, int size);
 
-// Find blocks in inode and read
+// Read data from file inode
 int fs_read(FileSystem *fs, int inode_index, void *buffer, int size);
-
-// Delete a file by name
-int fs_delete(FileSystem *fs, const char *name);
 
 // Get file size
 int fs_get_size(FileSystem *fs, int inode_index);
+
+// Free all blocks belonging to an inode
+void free_inode_blocks(FileSystem *fs, int inode_index);
 
 #endif
