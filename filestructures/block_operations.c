@@ -1,5 +1,5 @@
 #include "block_operations.h"
-#include "shared_values.h"
+#include "../shared_values.h"
 #include "bitmap.h"
 
 // reads one full block from the disk image into the buffer.

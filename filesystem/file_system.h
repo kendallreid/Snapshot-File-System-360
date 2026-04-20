@@ -12,5 +12,6 @@ void free_inode_blocks(int inode_index);
 int fs_write(int inode_index, const void *data, int size);
 int fs_read(int inode_index, void *buffer, int size);
 int fs_delete(const char *name);
+int fs_get_size(int inode_index);
 
 #endif

@@ -12,6 +12,6 @@ add_executable(Snapshot_File_System_360
         filestructures/Block.h
         filestructures/block_operations.c
         filestructures/block_operations.h
-        filestructures/shared_values.h
+        shared_values.h
         filestructures/testbitmap.c
         filesystem/inode.h)

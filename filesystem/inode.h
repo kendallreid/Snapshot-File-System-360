@@ -2,7 +2,7 @@
 #define INODE_H
 
 #include <stdint.h>
-#include "shared_values.h"
+#include "../shared_values.h"
 
 
 #define FILE_TYPE 0

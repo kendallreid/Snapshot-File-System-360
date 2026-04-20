@@ -6,9 +6,9 @@
 
 #include "directory.h"
 #include "inode.h"
-#include "block_operations.h"
-#include "bitmap.h"
-#include "shared_values.h"
+#include "../filestructures/block_operations.h"
+#include "../filestructures/bitmap.h"
+#include "../shared_values.h"
 
 // Disk file
 FILE *disk = NULL;
@@ -327,4 +327,15 @@ int fs_delete(const char *name)
     }
     --root_dir_count;
     return 0;
+}
+
+int fs_get_size(int inode_index)
+{
+    if (inode_index < 0 || inode_index >= MAX_INODES)
+        return -1;
+
+    if (inode_table[inode_index].used == 0)
+        return -1;
+
+    return inode_table[inode_index].file_size;
 }

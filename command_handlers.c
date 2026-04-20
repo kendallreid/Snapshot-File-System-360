@@ -2,9 +2,8 @@
 
 #include <string.h>
 
-#include "file_system.h"
+#include "filesystem/file_system.h"
 #include "shared_values.h"
-#include "file_system.h"
 
 // User input determines command for switch statment
 int get_command_id(const char *cmd)
@@ -96,7 +95,12 @@ void handle_read()
         return;
     }
 
-    int file_size = inode_table[inode].file_size;
+    int file_size = fs_get_size(inode);
+    if (file_size < 0)
+    {
+        printf("invalid file\n");
+        return;
+    }
 
     char buffer[file_size + 1];  // allocate exact size (+1 for '\0')
 
