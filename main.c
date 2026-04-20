@@ -1,17 +1,18 @@
 #include <stdio.h>
 #include <string.h>
+
 #include "filesystem/file_system.h"
 #include "command_handlers.h"
 
 #define MAX_INPUT 128
 
-
 int main()
 {
+    FileSystem fs;
     char input[MAX_INPUT];
     char cmd[32];
 
-    fs_init();
+    fs_init(&fs);
 
     printf("Simple Snapshot File System\n");
     printf("Commands:\n\t"
@@ -22,38 +23,43 @@ int main()
         printf("> ");
         fflush(stdout);
 
-        // Input too large
+        // Read full input line
         if (!fgets(input, sizeof(input), stdin))
             break;
+
         input[strcspn(input, "\n")] = 0;
 
-        sscanf(input, "%s", cmd);
+        // Extract command safely
+        if (sscanf(input, "%31s", cmd) != 1)
+        {
+            printf("invalid input\n");
+            continue;
+        }
 
-        // Interactive mode, could be more command like if needed
         switch (get_command_id(cmd))
         {
             case CMD_CREATE:
-                handle_create();
+                handle_create(&fs);
                 break;
 
             case CMD_WRITE:
-                handle_write();
+                handle_write(&fs);
                 break;
 
             case CMD_READ:
-                handle_read();
+                handle_read(&fs);
                 break;
 
             case CMD_LS:
-                fs_ls();
+                fs_ls(&fs);
                 break;
 
             case CMD_DELETE:
-                handle_delete();
+                handle_delete(&fs);
                 break;
 
             case CMD_LOOKUP:
-                handle_lookup();
+                handle_lookup(&fs);
                 break;
 
             case CMD_EXIT:
@@ -63,5 +69,6 @@ int main()
                 printf("unknown command\n");
         }
     }
+
     return 0;
 }

@@ -1,8 +1,7 @@
 #include "command_handlers.h"
 
 #include <string.h>
-
-#include "filesystem/file_system.h"
+#include <stdio.h>
 #include "shared_values.h"
 
 // User input determines command for switch statment
@@ -20,7 +19,7 @@ int get_command_id(const char *cmd)
 }
 
 // Creates file/directory
-void handle_create()
+void handle_create(FileSystem *fs)
 {
     char name[64];
     char type[16];
@@ -33,14 +32,29 @@ void handle_create()
     fgets(type, sizeof(type), stdin);
     type[strcspn(type, "\n")] = 0;
 
-    inode_type t = (strcmp(type, "dir") == 0) ? DIR_TYPE : FILE_TYPE;
+    inode_type t;
 
-    if (fs_create(name, t) == -1)
+    // strict validation
+    if (strcmp(type, "file") == 0)
+    {
+        t = FILE_TYPE;
+    }
+    else if (strcmp(type, "dir") == 0)
+    {
+        t = DIR_TYPE;
+    }
+    else
+    {
+        printf("invalid type (must be 'file' or 'dir')\n");
+        return;
+    }
+
+    if (fs_create(fs, name, t) == -1)
         printf("create failed\n");
 }
 
 // Writes to specified file
-void handle_write()
+void handle_write(FileSystem *fs)
 {
     char name[64];
 
@@ -48,7 +62,7 @@ void handle_write()
     fgets(name, sizeof(name), stdin);
     name[strcspn(name, "\n")] = 0;
 
-    int inode = fs_lookup(name);
+    int inode = fs_lookup(fs, name);
     if (inode == -1)
     {
         printf("file not found\n");
@@ -75,12 +89,12 @@ void handle_write()
         strcat(data, "\n");
     }
 
-    if (fs_write(inode, data, strlen(data)) == -1)
+    if (fs_write(fs, inode, data, strlen(data)) == -1)
         printf("write failed\n");
 }
 
 // Read a file
-void handle_read()
+void handle_read(FileSystem *fs)
 {
     char name[64];
 
@@ -88,23 +102,23 @@ void handle_read()
     fgets(name, sizeof(name), stdin);
     name[strcspn(name, "\n")] = 0;
 
-    int inode = fs_lookup(name);
+    int inode = fs_lookup(fs, name);
     if (inode == -1)
     {
         printf("file not found\n");
         return;
     }
 
-    int file_size = fs_get_size(inode);
+    int file_size = fs_get_size(fs, inode);
     if (file_size < 0)
     {
         printf("invalid file\n");
         return;
     }
 
-    char buffer[file_size + 1];  // allocate exact size (+1 for '\0')
+    char buffer[file_size + 1];
 
-    int read_size = fs_read(inode, buffer, file_size);
+    int read_size = fs_read(fs, inode, buffer, file_size);
     if (read_size < 0)
     {
         printf("read error\n");
@@ -117,7 +131,7 @@ void handle_read()
 }
 
 // Delete a file or directory
-void handle_delete()
+void handle_delete(FileSystem *fs)
 {
     char name[64];
 
@@ -125,12 +139,12 @@ void handle_delete()
     fgets(name, sizeof(name), stdin);
     name[strcspn(name, "\n")] = 0;
 
-    if (fs_delete(name) == -1)
+    if (fs_delete(fs, name) == -1)
         printf("delete failed\n");
 }
 
 // Lookup an entry's inode
-void handle_lookup()
+void handle_lookup(FileSystem *fs)
 {
     char name[64];
 
@@ -138,7 +152,7 @@ void handle_lookup()
     fgets(name, sizeof(name), stdin);
     name[strcspn(name, "\n")] = 0;
 
-    int inode = fs_lookup(name);
+    int inode = fs_lookup(fs, name);
 
     if (inode == -1)
         printf("not found\n");

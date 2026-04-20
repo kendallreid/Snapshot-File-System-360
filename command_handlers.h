@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "filesystem/file_system.h"
+
 // command IDs
 #define CMD_CREATE  1
 #define CMD_WRITE   2
@@ -15,10 +17,10 @@
 #define CMD_UNKNOWN 0
 
 int get_command_id(const char *cmd);
-void handle_create();
-void handle_write();
-void handle_read();
-void handle_delete();
-void handle_lookup();
+void handle_create(FileSystem *fs);
+void handle_write(FileSystem *fs);
+void handle_read(FileSystem *fs);
+void handle_delete(FileSystem *fs);
+void handle_lookup(FileSystem *fs);
 
 #endif
