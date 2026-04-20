@@ -168,6 +168,11 @@ void free_inode_blocks(int inode_index)
 int fs_write(int inode_index, const void *data, int size)
 {
     // Check if valid inode index and use
+    if (inode_table[inode_index].type == DIR_TYPE)
+    {
+        printf("Error: cannot write to a directory\n");
+        return -1;
+    }
     if (inode_index < 0 || inode_index >= MAX_INODES)
         return -1;
     if (inode_table[inode_index].used == 0)
@@ -232,6 +237,11 @@ int fs_write(int inode_index, const void *data, int size)
 // Find blocks in inode and read
 int fs_read(int inode_index, void *buffer, int size)
 {
+    if (inode_table[inode_index].type == DIR_TYPE)
+    {
+        printf("Error: cannot read a directory\n");
+        return -1;
+    }
     // Check valid inode
     if (inode_index < 0 || inode_index >= MAX_INODES)
         return -1;
@@ -299,6 +309,13 @@ int fs_delete(const char *name)
 
     // Clear out file and all associated blocks and inode
     int inode_index = root_dir[dir_index].inode_index;
+
+    if (inode_table[inode_index].type == DIR_TYPE)
+    {
+        // in current system: safe to delete
+        // in real FS: check if empty first
+    }
+
     free_inode_blocks(inode_index);
     inode_table[inode_index].used = 0;
     inode_table[inode_index].type = FILE_TYPE;
