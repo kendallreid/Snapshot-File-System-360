@@ -25,6 +25,7 @@ int read_block(FILE *disk, int block_num, uint8_t *buffer)
     if (bytes_read != BLOCK_SIZE) {
         return -1;
     }
+    return 0;
 }
 
 // writes one full block from the buffer into the disk image.
@@ -53,6 +54,7 @@ int write_block(FILE *disk, int block_num, const uint8_t *buffer)
     if (fflush(disk) != 0) {
         return -1;
     }
+    return 0;
 }
 
 // Allocates the first free block recorded in the data bitmap.

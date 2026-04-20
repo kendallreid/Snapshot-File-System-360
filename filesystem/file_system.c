@@ -21,25 +21,29 @@ DirEntry root_dir[MAX_DIR_ENTRIES];
 int root_dir_count = 0;
 
 // Formats disk
-int mkfs()
+int mkfs(const char *disk_name)
 {
-    // Create/reset disk file
-    disk = fopen("disk.dat", "w+b");
-    if (disk == NULL) return -1;
+    disk = fopen(disk_name, "w+b");
+    if (!disk) return -1;
 
-    // Expand file to full size
-    fseek(disk, BLOCK_SIZE * TOTAL_BLOCKS - 1, SEEK_SET);
-    fwrite("", 1, 1, disk);
-    fflush(disk);
-
-    // Zero out disk
     uint8_t zero[BLOCK_SIZE];
     memset(zero, 0, BLOCK_SIZE);
 
+    // Write empty disk
     for (int i = 0; i < TOTAL_BLOCKS; i++) {
         fseek(disk, i * BLOCK_SIZE, SEEK_SET);
         fwrite(zero, 1, BLOCK_SIZE, disk);
     }
+
+    // Initialize bitmap
+    uint8_t bitmap[BLOCK_SIZE];
+    memset(bitmap, 0, BLOCK_SIZE);
+
+    // mark bitmap block as used
+    bitmap_set(bitmap, DATA_BITMAP_BLOCK);
+
+    fseek(disk, DATA_BITMAP_BLOCK * BLOCK_SIZE, SEEK_SET);
+    fwrite(bitmap, 1, BLOCK_SIZE, disk);
 
     fflush(disk);
     return 0;
@@ -54,7 +58,7 @@ int fs_init()
 
     if (disk == NULL) {
         // If no disk exists, create one via mkfs
-        mkfs();
+        mkfs("disk.dat");
     }
 
     // Clear all inodes for fresh start
@@ -168,68 +172,71 @@ void free_inode_blocks(int inode_index)
 int fs_write(int inode_index, const void *data, int size)
 {
     // Check if valid inode index and use
+    if (inode_index < 0 || inode_index >= MAX_INODES)
+        return -1;
+
+    if (inode_table[inode_index].used == 0)
+        return -1;
+
     if (inode_table[inode_index].type == DIR_TYPE)
     {
         printf("Error: cannot write to a directory\n");
         return -1;
     }
-    if (inode_index < 0 || inode_index >= MAX_INODES)
-        return -1;
-    if (inode_table[inode_index].used == 0)
-        return -1;
+
     if (size <= 0)
         return -1;
+
     if (size > 16 * BLOCK_SIZE)
         return -1;
 
-    // Load bitmap into RAM from disk - tracks which blocks are free
-    uint8_t bitmap_buffer[BLOCK_SIZE];
-    if (read_block(disk, DATA_BITMAP_BLOCK, bitmap_buffer) != 0)
-        return -1;
-
-    // Free old blocks
+    // Free old blocks before writing new data
     free_inode_blocks(inode_index);
 
-    // Prepare as input data
-    uint8_t *byte_data = (uint8_t *)data;
+    // Prepare input data as byte array
+    const uint8_t *byte_data = (const uint8_t *)data;
 
-    // Blocks needed - ceiling division
+    // Blocks needed - ceiling division for correct number of blocks
     int blocks_needed = (size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+    // Reset inode metadata for new write
+    inode_table[inode_index].block_count = 0;
+    inode_table[inode_index].file_size = size;
 
     // Allocate + write each block
     for (int i = 0; i < blocks_needed; i++)
     {
-        // Allocate a block from bitmap
-        int block = bitmap_allocate(bitmap_buffer, TOTAL_BLOCKS);
+        // Allocate a block from disk bitmap (safe allocator handles bitmap internally)
+        int block = alloc_block(disk);
         if (block == -1)
+        {
+            printf("Error: no free blocks available\n");
             return -1;
+        }
 
         // Prepare block buffer
         uint8_t buffer[BLOCK_SIZE];
         memset(buffer, 0, BLOCK_SIZE);
 
-        // Offset in file and bytes to copy
+        // Calculate offset in input data
         int offset = i * BLOCK_SIZE;
         int chunk = BLOCK_SIZE;
 
+        // Handle last partial block
         if (offset + chunk > size)
             chunk = size - offset;
 
-        // Copy file data into a block
+        // Copy file data into block buffer
         memcpy(buffer, byte_data + offset, chunk);
 
-        // Write block data to disk
+        // Write block to disk
         if (write_block(disk, block, buffer) != 0)
             return -1;
 
-        // Store in inode
+        // Store block in inode
         inode_table[inode_index].blocks[i] = block;
         inode_table[inode_index].block_count++;
     }
-
-    // Save updated bitmap back to disk
-    if (write_block(disk, DATA_BITMAP_BLOCK, bitmap_buffer) != 0)
-        return -1;
 
     return 0;
 }
@@ -237,17 +244,18 @@ int fs_write(int inode_index, const void *data, int size)
 // Find blocks in inode and read
 int fs_read(int inode_index, void *buffer, int size)
 {
-    if (inode_table[inode_index].type == DIR_TYPE)
-    {
-        printf("Error: cannot read a directory\n");
-        return -1;
-    }
     // Check valid inode
     if (inode_index < 0 || inode_index >= MAX_INODES)
         return -1;
 
     if (inode_table[inode_index].used == 0)
         return -1;
+
+    if (inode_table[inode_index].type == DIR_TYPE)
+    {
+        printf("Error: cannot read a directory\n");
+        return -1;
+    }
 
     // Actual bytes available in file
     int file_size = inode_table[inode_index].file_size;
