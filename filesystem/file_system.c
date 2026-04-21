@@ -10,6 +10,58 @@
 #include "../shared_values.h"
 
 #define ENTRIES_PER_BLOCK (BLOCK_SIZE / sizeof(DirEntry))
+#define INODE_SIZE_BYTES (sizeof(Inode) * MAX_INODES)
+#define INODE_TABLE_BLOCK_START (DATA_BITMAP_BLOCK + 1)
+#define INODE_TABLE_BLOCKS ((INODE_SIZE_BYTES + BLOCK_SIZE - 1) / BLOCK_SIZE)
+#define FIRST_DATA_BLOCK (INODE_TABLE_BLOCK_START + INODE_TABLE_BLOCKS)
+
+
+// writes the in-memory inode table back to its reserved disk region
+static int save_inode_table(FileSystem *fs)
+{
+    if (!fs || !fs->disk)
+    {
+        return -1;
+    }
+
+    if (fseek(fs->disk, INODE_TABLE_BLOCK_START * BLOCK_SIZE, SEEK_SET) != 0)
+    {
+        return -1;
+    }
+
+    size_t written = fwrite(fs->inode_table, sizeof(Inode), MAX_INODES, fs->disk);
+    if (written != MAX_INODES)
+    {
+        return -1;
+    }
+
+    fflush(fs->disk);
+    return 0;
+}
+
+// loads the inode table from disk into memory at startup
+static int load_inode_table(FileSystem *fs)
+{
+    if (!fs || !fs->disk)
+    {
+        return -1;
+    }
+
+    if (fseek(fs->disk, INODE_TABLE_BLOCK_START * BLOCK_SIZE, SEEK_SET) != 0)
+    {
+        return -1;
+    }
+
+    size_t read = fread(fs->inode_table, sizeof(Inode), MAX_INODES, fs->disk);
+    if (read != MAX_INODES)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+
 
 // Creates a brand new empty disk file
 int mkfs(FileSystem *fs, const char *disk_name)
@@ -34,48 +86,66 @@ int mkfs(FileSystem *fs, const char *disk_name)
     memset(bitmap, 0, BLOCK_SIZE);
 
     // Mark bitmap block itself as used
-    bitmap_set(bitmap, DATA_BITMAP_BLOCK);
+    // Reserve metadata blocks so normal file allocation never overwrites them.
+    for (int b = 0; b < FIRST_DATA_BLOCK; b++)
+    {
+        bitmap_set(bitmap, b);
+    }
 
     // Save bitmap to disk
     fseek(fs->disk, DATA_BITMAP_BLOCK * BLOCK_SIZE, SEEK_SET);
     fwrite(bitmap, 1, BLOCK_SIZE, fs->disk);
 
     fflush(fs->disk);
+
+    memset(fs->inode_table, 0, sizeof(fs->inode_table));
+
+    // Create root directory inode
+    fs->inode_table[0].used = 1;
+    fs->inode_table[0].type = DIR_TYPE;
+    fs->inode_table[0].file_size = 0;
+    fs->inode_table[0].block_count = 0;
+    fs->inode_table[0].parent_inode = 0;
+    memset(fs->inode_table[0].blocks, 0, sizeof(fs->inode_table[0].blocks));
+
+
+    if (save_inode_table(fs) != 0)
+    {
+        fclose(fs->disk);
+        fs->disk = NULL;
+        return -1;
+    }
     return 0;
 }
 
 // Loads existing disk or creates new one
 int fs_init(FileSystem *fs)
 {
+     if (!fs)
+    {
+        return -1;
+    }
+
     // Try opening previous disk
     fs->disk = fopen("disk.dat", "r+b");
 
     // If none exists, create one
     if (!fs->disk)
-        mkfs(fs, "disk.dat");
-
-    // Reset every inode entry in memory
-    for (int i = 0; i < MAX_INODES; i++)
     {
-        fs->inode_table[i].used = 0;
-        fs->inode_table[i].type = FILE_TYPE;
-        fs->inode_table[i].file_size = 0;
-        fs->inode_table[i].block_count = 0;
-        fs->inode_table[i].parent_inode = 0;
-
-        // Clear block pointers
-        for (int j = 0; j < MAX_BLOCKS_PER_INODE; j++)
-            fs->inode_table[i].blocks[j] = 0;
+        if(mkfs(fs, "disk.dat") != 0)
+        {
+            return -1;
+        }
+        fs->cwd_inode = 0;
+        return 0;
     }
-
-    // Create root directory inode
-    fs->inode_table[0].used = 1;
-    fs->inode_table[0].type = DIR_TYPE;
-    fs->inode_table[0].parent_inode = 0;
-
-    // Start current directory at root
+     if (load_inode_table(fs) != 0)
+    {
+        fclose(fs->disk);
+        fs->disk = NULL;
+        return -1;
+    }
     fs->cwd_inode = 0;
-
     return 0;
 }
 
@@ -296,8 +366,20 @@ int fs_create(FileSystem *fs, const char *path, inode_type type)
     memset(fs->inode_table[inode_index].blocks, 0,
            sizeof(fs->inode_table[inode_index].blocks));
 
+
     // Add name into parent directory
-    return insert_into_dir(fs, parent_inode, name, inode_index);
+    if (insert_into_dir(fs, parent_inode, name, inode_index) != 0)
+    {   
+        fs->inode_table[inode_index].used = 0;
+        return -1;
+    }
+
+    if (save_inode_table(fs) != 0)
+    {
+        fs->inode_table[inode_index].used = 0;
+        return -1;
+    }
+
 }
 // Lists contents of a directory
 int fs_ls(FileSystem *fs, const char *path)
@@ -390,6 +472,10 @@ int fs_delete(FileSystem *fs, const char *path)
     // Mark inode unused
     fs->inode_table[inode].used = 0;
 
+    if (save_inode_table(fs) != 0)
+    {
+        return -1;
+    }
     return 0;
 }
 
@@ -488,6 +574,10 @@ int fs_write(FileSystem *fs, int inode_index, const void *data, int size)
     node->block_count = blocks_needed;
     node->file_size = size;
 
+    if (save_inode_table(fs) != 0)
+    {
+        return -1;
+    }
     return 0;
 }
 
