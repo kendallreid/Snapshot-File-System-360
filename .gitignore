@@ -23,6 +23,7 @@ cmake_install.cmake
 
 # CLion IDE files
 .idea/
+cmake-build-*/
 
 # =========================
 # Visual Studio
