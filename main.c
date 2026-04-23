@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include <string.h>
+#include "vcs/vcs.h"
 
 #include "filesystem/file_system.h"
 #include "command_handlers.h"
 
 #define MAX_INPUT 128
+FileSystem fs;
 
 int main()
 {
-    FileSystem fs;
 
     char input[MAX_INPUT];
     char cmd[32];
@@ -19,7 +20,7 @@ int main()
     // initialize working directory
     fs.cwd_inode = 0;
 
-    printf("Simple Snapshot File System\n");
+    printf("Simple VC Snapshot File System\n");
     printf("Commands:\n");
     printf("\tcreate <path>\n");
     printf("\tls <path>\n");
@@ -28,6 +29,10 @@ int main()
     printf("\tdelete <path>\n");
     printf("\tlookup <path>\n");
     printf("\tcd <path>\n");
+    printf("\tinit\n");
+    printf("\tcommit <message>\n");
+    printf("\tlog\n");
+    printf("\tcheckout <commit-id>\n");
     printf("\texit\n\n");
 
     while (1)
@@ -39,7 +44,6 @@ int main()
             break;
 
         input[strcspn(input, "\n")] = 0;
-
         arg[0] = '\0';
 
         if (sscanf(input, "%31s %95[^\n]", cmd, arg) < 1)
@@ -63,7 +67,6 @@ int main()
                 break;
 
             case CMD_LS:
-                // FIX: empty string = cwd, not root fallback ambiguity
                 fs_ls(&fs, arg[0] ? arg : "");
                 break;
 
@@ -89,7 +92,34 @@ int main()
                 return 0;
 
             default:
-                printf("unknown command\n");
+                if (strcmp(cmd, "init") == 0)
+                {
+                    if (vcs_init() != 0)
+                        printf("vcs init failed\n");
+                }
+                else if (strcmp(cmd, "commit") == 0)
+                {
+                    if (!arg[0])
+                        printf("commit requires a message\n");
+                    else if (vcs_commit(arg) != 0)
+                        printf("commit failed\n");
+                }
+                else if (strcmp(cmd, "log") == 0)
+                {
+                    if (vcs_log() != 0)
+                        printf("log failed\n");
+                }
+                else if (strcmp(cmd, "checkout") == 0)
+                {
+                    if (!arg[0])
+                        printf("checkout requires a commit id\n");
+                    else if (vcs_checkout(arg) != 0)
+                        printf("checkout failed\n");
+                }
+                else
+                {
+                    printf("unknown command\n");
+                }
         }
     }
 
