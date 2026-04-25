@@ -27,6 +27,23 @@ The project demonstrates four major course themes:
 
 ---
 
+## Build Instructions
+
+### Requirements
+  - CMake
+
+### Build
+  - cmake .
+  - make
+
+### Run
+  - ./Snapshot_File_System_360
+
+### To remove disk 
+  - rm -f disk.dat
+
+---
+
 ## Filesystem Architecture
 
 ```text
@@ -51,7 +68,23 @@ Each file or directory has an inode storing:
 
 Directories store name-to-inode mappings.
 
+## Storage Layer Implementation
 
+- Bitmap-based free space tracking
+- Block-level disk access 
+- Block allocation and release 
+- Metadata block reservation
+- Support for persistent storage across runs
+
+Key Focus Areas
+
+- Managing free and used disk blocks with a bitmap
+- Treating the virtual disk as fixed-size storage blocks
+- Converting block numbers into byte offsets for disk I/O
+- Protecting filesystem metadata from being overwritten
+- Providing the low-level building blocks used by the higher-level filesystem
+
+  
 ## FileSystem Implementation
 
 - Inode table loading and saving
