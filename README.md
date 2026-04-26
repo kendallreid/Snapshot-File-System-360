@@ -103,7 +103,10 @@ Key Focus Areas
 - Managing parent/child directory relationships
 
 ## Versioning
--
+- init: initilizes the vcs
+- commit: commits changes to the codebase
+- log: provides a activity log to the user
+- checkout: checkouts a specified commit
 
 ## Design Decisions and Tradeoffs
 
