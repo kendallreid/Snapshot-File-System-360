@@ -102,6 +102,9 @@ Key Focus Areas
 - Converting paths into inode references
 - Managing parent/child directory relationships
 
+## Versioning
+-
+
 ## Design Decisions and Tradeoffs
 
 Inode-Based Design - Used inodes to separate metadata from filenames, similar to Unix systems.
